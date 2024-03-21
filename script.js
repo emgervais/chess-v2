@@ -1,3 +1,5 @@
+import { chess } from '/chess.js'
+
 function initializeBoard() {
     const cb = document.getElementById('chessboard');
 
@@ -48,18 +50,22 @@ function dragStart(event) {
 }
 function move(from, to) {
     const square = to.closest('.square');
+    if(!chessBoard.move(from.closest('.square').id, square.id))
+        return console.log('illegal');
     square.innerHTML = '';
     square.appendChild(from);
     from.classList.remove('selected');
+    chessBoard.print();
 }
 function setBoard(cb) {
     const color = ['light', 'dark'];
     var c = false;
+    var id = 0;
     for(let col = 0; col < 8; col++) {
         for(let row = 0; row < 8; row++) {
             const div = document.createElement('div');
             div.classList.add('square', color[c ? 1 : 0]);
-            div.id = col * 10 + row;
+            div.id = id++;
             cb.appendChild(div);
             c = !c;
         }
@@ -127,6 +133,9 @@ function getPieceHTML(piece) {
     }
 }
 
+var chessBoard = chess();
 document.addEventListener('DOMContentLoaded', function () {
     initializeBoard();
+    // chessBoard.move(0, 1);
+    // chessBoard.print();
 });
