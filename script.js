@@ -1,4 +1,4 @@
-import { chess } from '/chess.js'
+import { chess } from './chess.js'
 
 function initializeBoard() {
     const cb = document.getElementById('chessboard');
@@ -51,7 +51,7 @@ function dragStart(event) {
 function move(from, to) {
     const square = to.closest('.square');
     if(!chessBoard.move(from.closest('.square').id, square.id))
-        return console.log('illegal');
+        return chessBoard.print();;
     square.innerHTML = '';
     square.appendChild(from);
     from.classList.remove('selected');
