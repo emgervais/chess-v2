@@ -254,8 +254,9 @@ function isLegal(from, to, currboard, fictionnal) {
         ];
 
         //castle
-        if(ok)
-            listLegalMoves = castle(from ,currBoard, c, r, listLegalMoves);
+        if(from.color === turn)
+            listLegalMoves = castle(from ,currBoard, c, r);
+        console.log(listLegalMoves);
         //normal moves
         for (const [dx, dy] of directions) {
             const x = c + dx;
