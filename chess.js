@@ -1,10 +1,17 @@
 var chess = function () {
     var board = new Array(64);
+
+    var flag = {
+        moved: false
+    }
+
     var square = {
         id: 0,
         color: -1,
         type: '',
+        flags: flag
     };
+
     var pieces = {
         pawn: 'p',
         knight: 'n',
@@ -13,11 +20,10 @@ var chess = function () {
         queen: 'q',
         king: 'k'
     };
-    var colors = {
-        white: 0,
-        black: 1
-    };
-    var col = 8;
+
+    const WHITE = 0;
+    const BLACK = 1;
+
     var defaultPos = [
         'r','n','b','q','k','b','n','r',// 00 01 02 03 04 05 06 07
         'p','p','p','p','p','p','p','p',// 08 09 10 11 12 13 14 15
@@ -28,12 +34,15 @@ var chess = function () {
         'p','p','p','p','p','p','p','p',// 48 49 50 51 52 53 54 55
         'r','n','b','q','k','b','n','r',// 56 57 58 59 60 61 62 63
     ];
+
+    var turn = WHITE;
+
     function setUpBoard() {
-        var color = colors.black;
+        var color = BLACK;
         for(let i = 0; i < 64; i++) {
             if(i == 32)
-            color = colors.white;
-        var tempsquare = { ...square };
+                color = WHITE;
+        var tempsquare = deepCopy(square);;
         tempsquare.id = i;
         if(defaultPos[i] != ' ') {
             tempsquare.color = color;
@@ -52,26 +61,11 @@ function boardToAscii () {
 }
 function clearSquare(square) {
     square.type = '';
-    square.color = undefined;
-}
-function isOffBoard(id) {
-    if(id > 63 || id < 0)
-        return true;
-    return false;
+    square.color = -1;
+    square.flags = { ...flag};
 }
 
-var piecesOffset = {
-    pawn: 0, // col pos or neg
-    pawnTake: 1, //col +1 and -1
-    bishop: 1, //+1 and -1 %9 for west %7 if 0 + 7 for east
-    rookUp: 0, // %8
-    rookRight: 1, // +1 /8 * 8
-    queenDiag: 1, //+1 and -1 %9 for west %7 if 0 + 7 for east
-    queenUp: 0,
-    queenRight: 1,
-}
-
-function isLegal(from, to) {
+function isLegal(from, to, currboard, fictionnal) {
         var legalpiece = {
             'p': pawn,
             'n': knight,
@@ -80,89 +74,283 @@ function isLegal(from, to) {
             'q': queen,
             'k': king
         }
-        if(from.color === to.color || !legalpiece[from.type](from).includes(to.id))
+        //1. if selected piece not turn 2. if same color 3.piece legal move 4. is checked
+        if((!fictionnal && from.color !== turn) || from.color === to.color || !legalpiece[from.type](from, currboard).includes(to.id) || (!fictionnal && checked(from, to, false))) {
             return false;
+        }
         return true;
     }
 
+    function applyMove(from, to, currBoard) {
+        currBoard[to].type = currBoard[from].type;
+        currBoard[to].color = currBoard[from].color
+        currBoard[to].flags = currBoard[from].flags
+        clearSquare(currBoard[from]);
+        updateFlags(currBoard[to]);
+    }
+    
     function move(from, to) {
-
-        if(isLegal(board[from], board[to])) {
-            board[to].type = board[from].type;
-            board[to].color = board[from].color
-            clearSquare(board[from]);
+        if(isLegal(board[from], board[to], board, false)) {
+            applyMove(from, to, board);
+            turn = (turn === WHITE) ? BLACK : WHITE;
             return true;
         }
         return false;
     }
 
-    function pawn(from) {
+    function updateFlags(to) {
+        if(to.flags.moved === false)
+            to.flags.moved = true;
+    }
+
+    function checked(from, to, current) {
+        const tempBoard = deepCopy(board);
+        
+        if(!current)
+            applyMove(from.id, to.id, tempBoard);
+        var king = tempBoard.find(function(obj) {
+            return obj.type === 'k' && obj.color === turn;
+        });
+        for(let i = 0; i < 64; i++) {
+            if(tempBoard[i].color === turn || tempBoard[i].type === '')
+                continue ;
+            if(isLegal(tempBoard[i], king, tempBoard, true))
+                return true
+        }
+        return false;
+    }
+    //-----------pieces movement-------------
+    function pawn(from, currBoard) {
         const listLegalMoves = [];
-        const side = from.color == colors.white ? -1 : 1;
-        const forwardMove1 = col * side + piecesOffset.pawn + from.id;
-        const forwardMove2 = forwardMove1 + col * side + piecesOffset.pawn;
-        console.log(forwardMove1, forwardMove2);
-        if(!isOffBoard(forwardMove1) && board[forwardMove1].type == '') {
-            listLegalMoves.push(forwardMove1);
-            if(!isOffBoard(forwardMove2) && board[forwardMove2].type == '') {
-                listLegalMoves.push(forwardMove2);
+        const [c, r] = translateIndex(from.id, false);
+
+        var directions = [
+            [0, 1],
+            [0, 2],
+            [1, 1],
+            [-1, 1]
+        ];
+        if(from.color === WHITE)
+            directions = directions.map(([dx, dy]) => [-dx, -dy]);
+        for (const [dx, dy] of directions) {
+            const x = c + dx;
+            const y = r + dy;
+            if((dy === 2 || dy === -2 )&& from.flags.moved === true)//if two square but already moved
+                continue ;
+            if (x >= 0 && x < 8 && y >= 0 && y < 8) {
+                const id = translateIndex([x, y], true);
+                if(dx === 0 && currBoard[id].type !== '') {//if obstacle in front skip
+                    continue ;
+                }
+                if ((dx === 0 && currBoard[id].type === '') || (currBoard[id].color !== from.color && currBoard[id].type !== '')) {
+                    listLegalMoves.push(id);
+                }
             }
         }
 
-        const takeMove1 = col * side + piecesOffset.pawnTake + from.id;
-        const takeMove2 = col * side - piecesOffset.pawnTake + from.id;
-
-        if(!isOffBoard(takeMove1) && board[takeMove1].type != '' && board[takeMove1].color != from.color)
-            listLegalMoves.push(takeMove1);
-        if(!isOffBoard(takeMove2) && board[takeMove2].type != '' && board[takeMove1].color != from.color)
-            listLegalMoves.push(takeMove2);
-        console.log('in function: ', listLegalMoves);
         return listLegalMoves;
     }
 
-    function rook(from) {
-        var listLegalMoves = [];
+    function rook(from, currBoard) {
+        const listLegalMoves = [];
+        const [c, r] = translateIndex(from.id, false);
+    
+        const directions = [
+            [-1, 0], // Left
+            [1, 0],  // Right
+            [0, 1],  // Down
+            [0, -1]  // Up
+        ];
+    
+        for (const [dx, dy] of directions) {
+            let x = c + dx;
+            let y = r + dy;
+    
+            while (x >= 0 && x < 8 && y >= 0 && y < 8) {
+                const id = translateIndex([x, y], true);
+                if (currBoard[id].type === '') {
+                    listLegalMoves.push(id);
+                } else {
+                    if (currBoard[id].color !== from.color) {
+                        listLegalMoves.push(id);
+                    }
+                    break;
+                }
+                x += dx;
+                y += dy;
+            }
+        }
+    
+        return listLegalMoves;
+    }
 
+    function knight(from, currBoard) {
+        var listLegalMoves = [];
+        const [c, r] = translateIndex(from.id, false);
+
+        const directions = [
+            [-2, -1], [-2, 1],
+            [-1, -2], [-1, 2],
+            [1, -2], [1, 2],
+            [2, -1], [2, 1]
+        ];
+
+        for (const [dx, dy] of directions) {
+            const x = c + dx;
+            const y = r + dy;
+    
+            if (x >= 0 && x < 8 && y >= 0 && y < 8) {
+                const id = translateIndex([x, y], true);
+                if (currBoard[id].type === '' || currBoard[id].color !== from.color) {
+                    listLegalMoves.push(id);
+                }
+            }
+        }
 
         return listLegalMoves;
     }
 
-    function knight(from) {
+    function bishop(from, currBoard) {
         var listLegalMoves = [];
+        const [c, r] = translateIndex(from.id, false);
 
+        const directions = [
+            [-1, -1],   //nw
+            [-1, 1],    //sw
+            [1, -1],    //ne
+            [1, 1],     //se
+        ];
 
+        for (const [dx, dy] of directions) {
+            let x = c + dx;
+            let y = r + dy;
+    
+            while (x >= 0 && x < 8 && y >= 0 && y < 8) {
+                const id = translateIndex([x, y], true);
+                if (currBoard[id].type === '') {
+                    listLegalMoves.push(id);
+                } else {
+                    if (currBoard[id].color !== from.color) {
+                        listLegalMoves.push(id);
+                    }
+                    break;
+                }
+                x += dx;
+                y += dy;
+            }
+        }
         return listLegalMoves;
     }
 
-    function bishop(from) {
+    function king(from, currBoard) {
         var listLegalMoves = [];
-
-
-        return listLegalMoves;
-    }
-
-    function king(from) {
-        var listLegalMoves = [];
+        const [c, r] = translateIndex(from.id, false);
         
+        const directions = [
+            [0, 1], [0, -1],
+            [1, 0], [-1, 0],
+            [1, 1], [-1, 1],
+            [1, -1], [-1, -1],
+        ];
+
+        //castle
+        if(ok)
+            listLegalMoves = castle(from ,currBoard, c, r, listLegalMoves);
+        //normal moves
+        for (const [dx, dy] of directions) {
+            const x = c + dx;
+            const y = r + dy;
+    
+            if (x >= 0 && x < 8 && y >= 0 && y < 8) {
+                const id = translateIndex([x, y], true);
+                if (currBoard[id].type === '' || currBoard[id].color !== from.color) {
+                    listLegalMoves.push(id);
+                }
+            }
+        }
 
         return listLegalMoves;
     }
 
-    function queen(from) {
+    function castle(from, currBoard, c, r) {
         var listLegalMoves = [];
+        if(from.flags.moved === false && !checked(from, from, true)) {
+            let x = c;
+            let id = translateIndex([++x, r], true)
+            while((x >= 0 && x < 8) && currBoard[id].type === '') {
+                if(checked(from, currBoard[id], false))
+                    break ;
+                id = translateIndex([++x, r], true);
+            }
+            if(x - c === 2 && currBoard[id].type === 'r' && !currBoard[id].flags.moved && currBoard[id].color === from.color)
+                listLegalMoves.push(id);
+            x = c;
+            id = translateIndex([--x, r], true);
+            while((x >= 0 && x < 8) && currBoard[id].type === '') {
+                if(checked(from, currBoard[id], false))
+                    break ;
+                id = translateIndex([--x, r], true);
+            }
+            if(x - c === 3 && currBoard[id].type === 'r' && !currBoard[id].flags.moved && currBoard[id].color === from.color)
+                listLegalMoves.push(id);
+        }
+        return listLegalMoves
+    }
 
+    function queen(from, currBoard) {
+        var listLegalMoves = [];
+        const [c, r] = translateIndex(from.id, false);
+
+        const directions = [
+            [0, 1], [0, -1],
+            [1, 0], [-1, 0],
+            [1, 1], [-1, 1],
+            [1, -1], [-1, -1],
+        ];
+
+        for (const [dx, dy] of directions) {
+            let x = c + dx;
+            let y = r + dy;
+    
+            while (x >= 0 && x < 8 && y >= 0 && y < 8) {
+                const id = translateIndex([x, y], true);
+                if (currBoard[id].type === '') {
+                    listLegalMoves.push(id);
+                } else {
+                    if (currBoard[id].color !== from.color) {
+                        listLegalMoves.push(id);
+                    }
+                    break;
+                }
+                x += dx;
+                y += dy;
+            }
+        }
 
         return listLegalMoves;
     }
+
     setUpBoard();
     return {
         board: board,
         square: square,
         pieces: pieces,
-        colors: colors,
         print: boardToAscii,
         move: move,
     };
+}
+
+function translateIndex(id, toIndex) {
+    if(toIndex) {
+        return id[1] * 8 + id[0];
+    }
+    const column = id % 8;
+    const row = Math.floor(id / 8);
+    return [column, row];
+}
+
+function deepCopy(obj) {
+    return JSON.parse(JSON.stringify(obj));
 }
 
 export {chess};
