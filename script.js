@@ -51,7 +51,7 @@ function dragStart(event) {
 function move(from, to) {
     const square = to.closest('.square');
     if(!chessBoard.move(from.closest('.square').id, square.id))
-        return chessBoard.print();;
+        return chessBoard.print();
     square.innerHTML = '';
     square.appendChild(from);
     from.classList.remove('selected');
@@ -82,7 +82,7 @@ function addPieces() {
         '        ',
         '        ',
         'PPPPPPPP',
-        'RNBQKBNR'
+        'R   K  R'
     ];
 
     for (let col = 0; col < 8; col++) {
@@ -133,8 +133,9 @@ function getPieceHTML(piece) {
     }
 }
 
-var chessBoard = chess();
+var chessBoard;
 document.addEventListener('DOMContentLoaded', function () {
+    chessBoard = chess();
     initializeBoard();
     // chessBoard.move(0, 1);
     // chessBoard.print();
