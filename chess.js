@@ -4,14 +4,15 @@ var chess = function () {
     const board = new Array(64);
 
     var flag = {
-        moved: false
+        moved: false,
+        enpassant: 0
     }
 
     var square = {
         id: 0,
         color: -1,
         type: '',
-        flags: flag
+        flags: { ...flag }
     };
 
     var pieces = {
@@ -31,24 +32,21 @@ var chess = function () {
         'p','p','p','p','p','p','p','p',// 08 09 10 11 12 13 14 15
         ' ',' ',' ',' ',' ',' ',' ',' ',// 16 17 18 19 20 21 22 23
         ' ',' ',' ',' ',' ',' ',' ',' ',// 24 25 26 27 28 29 30 31
-        ' ',' ',' ',' ',' ',' ',' ',' ',// 32 33 34 35 36 37 38 39
+        ' ',' ','p',' ','p',' ',' ',' ',// 32 33 34 35 36 37 38 39
         ' ',' ',' ',' ',' ',' ',' ',' ',// 40 41 42 43 44 45 46 47
-        'p','p','p','p','p','p','p','p',// 48 49 50 51 52 53 54 55
-        'r',' ',' ',' ','k',' ',' ','r',// 56 57 58 59 60 61 62 63
+        'P','P','P','P','P','P','P','P',// 48 49 50 51 52 53 54 55
+        'R',' ',' ',' ','K',' ',' ','R',// 56 57 58 59 60 61 62 63
     ];
 
     var turn = WHITE;
 
     function setUpBoard() {
-        var color = BLACK;
         for(let i = 0; i < 64; i++) {
-            if(i == 32)
-                color = WHITE;
             var tempsquare = structuredClone(square);
             tempsquare.id = i;
             if(defaultPos[i] != ' ') {
-                tempsquare.color = color;
-                tempsquare.type = defaultPos[i];
+                tempsquare.color = defaultPos[i] === defaultPos[i].toLowerCase() ? BLACK : WHITE;
+                tempsquare.type = defaultPos[i].toLowerCase();
             }
             board[i] = tempsquare;
         }
@@ -109,9 +107,14 @@ var chess = function () {
             if(board === currBoard)
                 updateCastle(rook, legalMove.to + dir);
         }
+        if(legalMove.applyPassant) {
+            clearSquare(currBoard, legalMove.applyPassant);
+            if(board === currBoard)
+                updatePassant(legalMove.applyPassant);
+        }
         swap(legalMove, currBoard);
         clearSquare(currBoard, legalMove.from);
-        updateFlags(currBoard, legalMove.to);
+        updateFlags(currBoard, legalMove);
     }
     
     function move(from, to) {
@@ -124,9 +127,27 @@ var chess = function () {
         return false;
     }
 
-    function updateFlags(currboard, to) {
-        if(currboard[to].flags.moved === false)
-        currboard[to].flags.moved = true;
+    function clearEnpassant(currBoard) {
+        currBoard.forEach(square => {
+            square.flags.enpassant = 0;
+        });
+    }
+
+    function updateFlags(currboard, legalMove) {
+        if(currboard[legalMove.to].flags.moved === false)
+            currboard[legalMove.to].flags.moved = true;
+        clearEnpassant(currboard);
+        if(legalMove.enpassant) {
+            const dir = [1, -1];
+            for(const d of dir) {
+                var id = legalMove.to + d
+                if(Math.floor(id / 8) !== Math.floor(legalMove.to / 8))
+                    continue ;
+                if(currboard[id].type === 'p' && currboard[id].color !== currboard[legalMove.to].color)
+                    currboard[id].flags.enpassant = legalMove.to;
+
+            }
+        }
     }
 
     function checked(legalMove, current) {
@@ -146,12 +167,13 @@ var chess = function () {
         return false;
     }
 
-    function setupMoves(from, to, castle, enpassant) {
+    function setupMoves(from, to, castle = false, enpassant = false, applyPassant = 0) {
         return {
             from: from,
             to: to,
             castle: castle,
-            enpassant: enpassant
+            enpassant: enpassant,
+            applyPassant: applyPassant
         };
     }
     //-----------pieces movement-------------
@@ -178,11 +200,12 @@ var chess = function () {
                     continue ;
                 }
                 if ((dx === 0 && currBoard[id].type === '') || (currBoard[id].color !== from.color && currBoard[id].type !== '')) {
-                    listLegalMoves.push(setupMoves(from.id, id, false, false));
+                    listLegalMoves.push(setupMoves(from.id, id, false, ((dx === 0 && dy === 2) || (dx === 0 && dy === -2) ? true: false)));
                 }
+                else if(id === (dy > 0 && dx !== 0 ? from.flags.enpassant + 8 : from.flags.enpassant - 8))
+                    listLegalMoves.push(setupMoves(from.id, id, false, false, from.flags.enpassant));
             }
         }
-
         return listLegalMoves;
     }
 
@@ -204,10 +227,10 @@ var chess = function () {
             while (x >= 0 && x < 8 && y >= 0 && y < 8) {
                 const id = translateIndex([x, y], true);
                 if (currBoard[id].type === '') {
-                    listLegalMoves.push(setupMoves(from.id, id, false, false));
+                    listLegalMoves.push(setupMoves(from.id, id));
                 } else {
                     if (currBoard[id].color !== from.color) {
-                        listLegalMoves.push(setupMoves(from.id, id, false, false));
+                        listLegalMoves.push(setupMoves(from.id, id));
                     }
                     break;
                 }
@@ -237,7 +260,7 @@ var chess = function () {
             if (x >= 0 && x < 8 && y >= 0 && y < 8) {
                 const id = translateIndex([x, y], true);
                 if (currBoard[id].type === '' || currBoard[id].color !== from.color) {
-                    listLegalMoves.push(setupMoves(from.id, id, false, false));
+                    listLegalMoves.push(setupMoves(from.id, id));
                 }
             }
         }
@@ -266,7 +289,7 @@ var chess = function () {
                     listLegalMoves.push(id);
                 } else {
                     if (currBoard[id].color !== from.color) {
-                        listLegalMoves.push(setupMoves(from.id, id, false, false));
+                        listLegalMoves.push(setupMoves(from.id, id));
                     }
                     break;
                 }
@@ -300,7 +323,7 @@ var chess = function () {
             if (x >= 0 && x < 8 && y >= 0 && y < 8) {
                 const id = translateIndex([x, y], true);
                 if (currBoard[id].type === '' || currBoard[id].color !== from.color) {
-                    listLegalMoves.push(setupMoves(from.id, id, false, false));
+                    listLegalMoves.push(setupMoves(from.id, id));
                 }
             }
         }
@@ -309,28 +332,27 @@ var chess = function () {
     }
 
     function castle(from, currBoard, c, r, listLegalMoves) {
-        if(from.flags.moved === false && !checked({from: from.id, to: from.id, castle: false, enpassant: false}, true)) {
+        if(from.flags.moved === false && !checked(setupMoves(from.id, from.id), true)) {
             let x = c;
             let id = translateIndex([++x, r], true);
             
             while((x >= 0 && x < 8) && currBoard[id].type === '') {
-                if(checked({from: from.id, to: id, castle: false, enpassant: false}, false))
+                if(checked(setupMoves(from.id, id), false))
                     break ;
 
                 id = translateIndex([++x, r], true);
             }
             if(x - c === 3 && currBoard[id].type === 'r' && !currBoard[id].flags.moved && currBoard[id].color === from.color)
-                listLegalMoves.push(setupMoves(from.id, id - 1, true, false));
+                listLegalMoves.push(setupMoves(from.id, id - 1, true));
             x = c;
             id = translateIndex([--x, r], true);
             while((x >= 0 && x < 8) && currBoard[id].type === '') {
-                if(checked({from: from.id, to: id, castle: false, enpassant: false}, false))
+                if(checked(setupMoves(from.id, id), false))
                     break ;
                 id = translateIndex([--x, r], true);
             }
             if(x - c === -4 && currBoard[id].type === 'r' && !currBoard[id].flags.moved && currBoard[id].color === from.color)
-                listLegalMoves.push(setupMoves(from.id, id + 2, true, false));
-            console.log(listLegalMoves);
+                listLegalMoves.push(setupMoves(from.id, id + 2, true));
         }
     }
 
@@ -355,7 +377,7 @@ var chess = function () {
                     listLegalMoves.push(id);
                 } else {
                     if (currBoard[id].color !== from.color) {
-                        listLegalMoves.push(setupMoves(from.id, id, false, false));
+                        listLegalMoves.push(setupMoves(from.id, id));
                     }
                     break;
                 }
@@ -369,7 +391,7 @@ var chess = function () {
 
     setUpBoard();
     return {
-        board: board,
+        board: defaultPos,
         square: square,
         pieces: pieces,
         print: boardToAscii,
@@ -391,6 +413,10 @@ function updateCastle(from, to) {
     const toDiv = document.getElementById(to);
     toDiv.appendChild(fromDiv.getElementsByTagName('img')[0])
     fromDiv.innerHTML = '';
+}
+
+function updatePassant(id) {
+    document.getElementById(id).innerHTML = '';
 }
 
 export {chess};

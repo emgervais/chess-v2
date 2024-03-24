@@ -74,31 +74,18 @@ function setBoard(cb) {
 }
 function addPieces() {
     const cb = document.getElementById('chessboard');
-    const piecesLayout = [
-        'rnbqkbnr',
-        'pppppppp',
-        '        ',
-        '        ',
-        '        ',
-        '        ',
-        'PPPPPPPP',
-        'R   K  R'
-    ];
+    const piecesLayout = chessBoard.board;
 
-    for (let col = 0; col < 8; col++) {
-        const rowData = piecesLayout[col];
-        for (let row = 0; row < 8; row++) {
-            const piece = rowData[row];
-            if (piece !== ' ') {
-                const square = cb.children[col * 8 + row];
-                const pieceImg = document.createElement('img'); // img
+    for (let i = 0; i < 64; i++) {
+            if (piecesLayout[i] !== ' ') {
+                const square = cb.children[i];
+                const pieceImg = document.createElement('img');
                 pieceImg.classList.add('piece');
                 pieceImg.draggable = true;
-                pieceImg.src = getPieceHTML(piece);
+                pieceImg.src = getPieceHTML(piecesLayout[i]);
                 square.appendChild(pieceImg);
             }
         }
-    }
 }
 
 function getPieceHTML(piece) {
