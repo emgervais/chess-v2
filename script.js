@@ -88,7 +88,7 @@ function addPieces() {
         }
 }
 
-function getPieceHTML(piece) {
+export default function getPieceHTML(piece) {
     
     switch (piece) {
         case 'r':

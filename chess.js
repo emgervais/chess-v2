@@ -1,4 +1,4 @@
-
+import getPieceHTML from './script.js'
 
 var chess = function () {
     const board = new Array(64);
@@ -29,12 +29,12 @@ var chess = function () {
 
     var defaultPos = [
         'r','n','b','q','k','b','n','r',// 00 01 02 03 04 05 06 07
-        'p','p','p','p','p','p','p','p',// 08 09 10 11 12 13 14 15
+        'p','P','p','p','p','p','p','p',// 08 09 10 11 12 13 14 15
         ' ',' ',' ',' ',' ',' ',' ',' ',// 16 17 18 19 20 21 22 23
         ' ',' ',' ',' ',' ',' ',' ',' ',// 24 25 26 27 28 29 30 31
         ' ',' ','p',' ','p',' ',' ',' ',// 32 33 34 35 36 37 38 39
         ' ',' ',' ',' ',' ',' ',' ',' ',// 40 41 42 43 44 45 46 47
-        'P','P','P','P','P','P','P','P',// 48 49 50 51 52 53 54 55
+        'P','P','P','P','P','P','p','P',// 48 49 50 51 52 53 54 55
         'R',' ',' ',' ','K',' ',' ','R',// 56 57 58 59 60 61 62 63
     ];
 
@@ -98,7 +98,8 @@ var chess = function () {
         currBoard[legalMove.to].flags = currBoard[legalMove.from].flags
     }
 
-    function applyMove(legalMove, currBoard) {
+    async function applyMove(legalMove, currBoard) {
+
         if(legalMove.castle) {
             var dir = legalMove.from - legalMove.to > 0 ? 1 : -1;
             var rook = dir === 1 ? legalMove.from - 4 : legalMove.from + 3;
@@ -107,15 +108,31 @@ var chess = function () {
             if(board === currBoard)
                 updateCastle(rook, legalMove.to + dir);
         }
-        if(legalMove.applyPassant) {
-            clearSquare(currBoard, legalMove.applyPassant);
+
+        if(legalMove.enpassant) {
+            clearSquare(currBoard, legalMove.enpassant);
             if(board === currBoard)
-                updatePassant(legalMove.applyPassant);
+                updatePassant(legalMove.enpassant);
         }
-        swap(legalMove, currBoard);
-        clearSquare(currBoard, legalMove.from);
-        updateFlags(currBoard, legalMove);
-    }
+
+        if (legalMove.promotion !== '') {
+            if (currBoard === board) {
+              const promotionPiece = await handlePromotion(legalMove.to, currBoard[legalMove.from].color);
+              updatePromotion(legalMove.to, currBoard[legalMove.from].color, promotionPiece);
+              currBoard[legalMove.from].type = promotionPiece;
+              swap(legalMove, currBoard);
+              clearSquare(currBoard, legalMove.from);
+              updateFlags(currBoard, legalMove);
+            } else {
+              updatePromotion(legalMove.to, currBoard[legalMove.from].color, legalMove.promotion);
+              currBoard[legalMove.from].type = legalMove.promotion;
+            }
+        } else {
+            swap(legalMove, currBoard);
+            clearSquare(currBoard, legalMove.from);
+            updateFlags(currBoard, legalMove);
+          }
+      }
     
     function move(from, to) {
         const legalMove = isLegal(board[from], board[to], board, false);
@@ -137,7 +154,7 @@ var chess = function () {
         if(currboard[legalMove.to].flags.moved === false)
             currboard[legalMove.to].flags.moved = true;
         clearEnpassant(currboard);
-        if(legalMove.enpassant) {
+        if(currboard[legalMove.to].type === 'p' && Math.abs(legalMove.from - legalMove.to) === 16) {
             const dir = [1, -1];
             for(const d of dir) {
                 var id = legalMove.to + d
@@ -167,14 +184,22 @@ var chess = function () {
         return false;
     }
 
-    function setupMoves(from, to, castle = false, enpassant = false, applyPassant = 0) {
+    function setupMoves(from, to, castle = false, enpassant = 0, promotion = '') {
         return {
             from: from,
             to: to,
             castle: castle,
             enpassant: enpassant,
-            applyPassant: applyPassant
+            promotion: promotion,
         };
+    }
+
+    function addPromotion(legalMoves, from, to) {
+        const pieces = ['q', 'r', 'n', 'b'];
+
+        pieces.forEach(piece => {
+            legalMoves.push(setupMoves(from, to, false, false, piece));
+        });
     }
     //-----------pieces movement-------------
     function pawn(from, currBoard) {
@@ -200,10 +225,14 @@ var chess = function () {
                     continue ;
                 }
                 if ((dx === 0 && currBoard[id].type === '') || (currBoard[id].color !== from.color && currBoard[id].type !== '')) {
-                    listLegalMoves.push(setupMoves(from.id, id, false, ((dx === 0 && dy === 2) || (dx === 0 && dy === -2) ? true: false)));
+                    if(y === 0 || y === 7) {
+                        addPromotion(listLegalMoves, from.id, id);
+                        continue;
+                    }
+                    listLegalMoves.push(setupMoves(from.id, id));
                 }
                 else if(id === (dy > 0 && dx !== 0 ? from.flags.enpassant + 8 : from.flags.enpassant - 8))
-                    listLegalMoves.push(setupMoves(from.id, id, false, false, from.flags.enpassant));
+                    listLegalMoves.push(setupMoves(from.id, id, false, from.flags.enpassant));
             }
         }
         return listLegalMoves;
@@ -374,7 +403,7 @@ var chess = function () {
             while (x >= 0 && x < 8 && y >= 0 && y < 8) {
                 const id = translateIndex([x, y], true);
                 if (currBoard[id].type === '') {
-                    listLegalMoves.push(id);
+                    listLegalMoves.push(setupMoves(from.id, id));
                 } else {
                     if (currBoard[id].color !== from.color) {
                         listLegalMoves.push(setupMoves(from.id, id));
@@ -419,4 +448,58 @@ function updatePassant(id) {
     document.getElementById(id).innerHTML = '';
 }
 
+async function handlePromotion(to, color) {
+    try {
+        const chosenPiece = await getPromotion(to, color);
+        return chosenPiece;
+        // Perform promotion logic here based on the chosen piece
+    } catch (error) {
+        console.error('Error during promotion:', error);
+    }
+}
+
+function getPromotion(to, color) {
+    return new Promise((resolve, reject) => {
+        const pieces = color === 0 ? ['Q', 'R', 'B', 'N'] : ['q', 'r', 'b', 'n'];
+        const menu = document.getElementById('promotion-menu');
+        const squareTo = document.getElementById(to);
+        menu.innerHTML = '';
+        const computedStyles = window.getComputedStyle(document.getElementsByClassName('square')[0]);
+        const h = parseFloat(computedStyles.getPropertyValue('height')); // Parse float value
+        const w = parseFloat(computedStyles.getPropertyValue('width')); // Parse float value
+        menu.style.height = `${h * 4}px`; // Set height with correct unit
+        pieces.forEach(piece => {
+            const div = document.createElement('div');
+            div.classList.add('promotion-option');
+            div.style.height = `${h}px`; // Set height with correct unit
+            div.style.width = `${w}px`; // Set width with correct unit
+            div.setAttribute('data-piece', piece.toLowerCase()); // Fixed syntax for toLowerCase()
+            const img = document.createElement('img');
+            img.src = getPieceHTML(piece);
+            div.appendChild(img);
+            menu.appendChild(div);
+        });
+        menu.style.display = 'grid';
+        // Position menu
+
+        const squareRect = squareTo.getBoundingClientRect();
+        const menuRect = menu.getBoundingClientRect();
+        const top = color === 0 ? squareRect.top : squareRect.top - (h + 3.2) * 3;
+        menu.style.top = `${top}px`;
+        menu.style.left = `${squareRect.left}px`;
+
+        // Click listener
+        menu.addEventListener('click', event => {
+                menu.style.display = 'none'; // Fixed syntax for display property
+                resolve(event.target.closest('.promotion-option').getAttribute('data-piece'));
+        }, { once: true });
+    });
+}
+
+function updatePromotion(to, color, piece) {
+    const fromDiv = document.getElementById(to);
+    if(color === 0)
+        piece = piece.toUpperCase();
+    fromDiv.getElementsByTagName('img')[0].src = getPieceHTML(piece);
+}
 export {chess};
