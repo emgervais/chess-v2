@@ -1,5 +1,7 @@
 import { chess } from './chess.js'
 
+var wait = false;
+
 function initializeBoard() {
     const cb = document.getElementById('chessboard');
 
@@ -36,7 +38,8 @@ function dragHandler(cb) {
     cb.addEventListener('drop', event => {
         const pieceId = event.dataTransfer.getData('text/plain');
         const piece = document.getElementById(pieceId);
-        move(piece.getElementsByTagName('img')[0], event.target);
+        if(!wait)
+            move(piece.getElementsByTagName('img')[0], event.target);
     });
 }
 
@@ -48,14 +51,16 @@ function dragStart(event) {
     // console.log(event);
     event.dataTransfer.setData('text/plain', event.target.closest('.square').id)
 }
-function move(from, to) {
+async function move(from, to) {
     const square = to.closest('.square');
-    if(!chessBoard.move(from.closest('.square').id, square.id))
-        return chessBoard.print();
-    square.innerHTML = '';
-    square.appendChild(from);
-    from.classList.remove('selected');
-    chessBoard.print();
+    wait = true;
+    const move = await chessBoard.move(from.closest('.square').id, square.id)
+    if(move !== undefined && move.promotion === '') {
+        square.innerHTML = '';
+        square.appendChild(from);
+        from.classList.remove('selected'); 
+    }
+    wait = false;
 }
 function setBoard(cb) {
     const color = ['light', 'dark'];

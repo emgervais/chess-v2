@@ -39,6 +39,7 @@ var chess = function () {
     ];
 
     var turn = WHITE;
+    var realTurn = WHITE;
 
     function setUpBoard() {
         for(let i = 0; i < 64; i++) {
@@ -60,6 +61,23 @@ var chess = function () {
         });
     }
 
+    function getLegalMoves(board, color) {
+        const moveList = [];
+        for(const square of board) {
+            if(square.color === color) {
+                const temp = isLegal(square, {color:!color}, board, false, true, color);
+                if(!temp)
+                    continue ;
+                for(const move of temp) {
+                    if(!checked(move, false))
+                        moveList.push(move);
+            }
+        }
+    }
+    console.log(moveList);
+        return moveList;
+    }
+
     function clearSquare(currboard, square) {
         currboard[square].type = '';
         currboard[square].color = -1;
@@ -72,7 +90,7 @@ var chess = function () {
         });
     }
 
-    function isLegal(from, to, currboard, fictionnal) {
+    function isLegal(from, to, currboard, fictionnal, generate=false, color=-1) {
         var legalpiece = {
             'p': pawn,
             'n': knight,
@@ -81,11 +99,15 @@ var chess = function () {
             'q': queen,
             'k': king
         }
+        if(color !== -1)
+            turn = color;
         //1. if selected piece not turn 2. if same color 3.piece legal move 4. is checked
         if((!fictionnal && from.color !== turn) || from.color === to.color) {
             return false;
         }
         const legalMoves = legalpiece[from.type](from, currboard);
+        if(generate)
+            return legalMoves;
         const legalMove = getMoveByToId(legalMoves, to.id);
         if(!legalMove|| (!fictionnal && checked(legalMove, false)))
             return false;
@@ -99,7 +121,6 @@ var chess = function () {
     }
 
     async function applyMove(legalMove, currBoard) {
-
         if(legalMove.castle) {
             var dir = legalMove.from - legalMove.to > 0 ? 1 : -1;
             var rook = dir === 1 ? legalMove.from - 4 : legalMove.from + 3;
@@ -118,30 +139,25 @@ var chess = function () {
         if (legalMove.promotion !== '') {
             if (currBoard === board) {
               const promotionPiece = await handlePromotion(legalMove.to, currBoard[legalMove.from].color);
-              updatePromotion(legalMove.to, currBoard[legalMove.from].color, promotionPiece);
+              updatePromotion(legalMove.from, legalMove.to, currBoard[legalMove.from].color, promotionPiece);
               currBoard[legalMove.from].type = promotionPiece;
-              swap(legalMove, currBoard);
-              clearSquare(currBoard, legalMove.from);
-              updateFlags(currBoard, legalMove);
             } else {
-              updatePromotion(legalMove.to, currBoard[legalMove.from].color, legalMove.promotion);
               currBoard[legalMove.from].type = legalMove.promotion;
             }
-        } else {
-            swap(legalMove, currBoard);
-            clearSquare(currBoard, legalMove.from);
-            updateFlags(currBoard, legalMove);
-          }
+        }
+        swap(legalMove, currBoard);
+        clearSquare(currBoard, legalMove.from);
+        updateFlags(currBoard, legalMove);
       }
     
-    function move(from, to) {
+    async function move(from, to) {
         const legalMove = isLegal(board[from], board[to], board, false);
         if(legalMove) {
-            applyMove(legalMove, board);
-            turn = (turn === WHITE) ? BLACK : WHITE;
-            return true;
+            await applyMove(legalMove, board);
+            realTurn = (realTurn === WHITE) ? BLACK : WHITE;
+            return legalMove;
         }
-        return false;
+        return undefined;
     }
 
     function clearEnpassant(currBoard) {
@@ -176,7 +192,7 @@ var chess = function () {
             return obj.type === 'k' && obj.color === turn;
         });
         for(let i = 0; i < 64; i++) {
-            if(tempBoard[i].color === turn || tempBoard[i].type === '')
+            if(tempBoard[i].color === king.color || tempBoard[i].type === '')
                 continue ;
             if(isLegal(tempBoard[i], king, tempBoard, true))
                 return true
@@ -419,12 +435,14 @@ var chess = function () {
     }
 
     setUpBoard();
+    getLegalMoves(structuredClone(board), 0);
     return {
         board: defaultPos,
         square: square,
         pieces: pieces,
         print: boardToAscii,
         move: move,
+        list: getLegalMoves,
     };
 }
 
@@ -452,7 +470,6 @@ async function handlePromotion(to, color) {
     try {
         const chosenPiece = await getPromotion(to, color);
         return chosenPiece;
-        // Perform promotion logic here based on the chosen piece
     } catch (error) {
         console.error('Error during promotion:', error);
     }
@@ -496,10 +513,11 @@ function getPromotion(to, color) {
     });
 }
 
-function updatePromotion(to, color, piece) {
-    const fromDiv = document.getElementById(to);
+function updatePromotion(from, to, color, piece) {
+    const toDiv = document.getElementById(to);
+    document.getElementById(from).innerHTML = '';
     if(color === 0)
         piece = piece.toUpperCase();
-    fromDiv.getElementsByTagName('img')[0].src = getPieceHTML(piece);
+    toDiv.getElementsByTagName('img')[0].src = getPieceHTML(piece);
 }
 export {chess};
