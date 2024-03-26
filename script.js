@@ -149,26 +149,20 @@ async function applyMove(legalMove, board) {
     if(legalMove.castle) {
         var dir = legalMove.from - legalMove.to > 0 ? 1 : -1;
         var rook = dir === 1 ? legalMove.from - 4 : legalMove.from + 3;
-        if(board === board)
-            updateCastle(rook, legalMove.to + dir);
+        updateCastle(rook, legalMove.to + dir);
         swap({from: rook, to: legalMove.to + dir, castle:false, enpassant:false}, board);
         clearSquare(board, rook);
     }
 
     if(legalMove.enpassant) {
         clearSquare(board, legalMove.enpassant);
-        if(board === board)
-            updatePassant(legalMove.enpassant);
+        updatePassant(legalMove.enpassant);
     }
 
     if (legalMove.promotion !== '') {
-        if (board === board) {
           const promotionPiece = await handlePromotion(legalMove.to, board[legalMove.from].color);
           updatePromotion(legalMove.from, legalMove.to, board[legalMove.from].color, promotionPiece);
           board[legalMove.from].type = promotionPiece;
-        } else {
-          board[legalMove.from].type = legalMove.promotion;
-        }
     }
     swap(legalMove, board);
     clearSquare(board, legalMove.from);

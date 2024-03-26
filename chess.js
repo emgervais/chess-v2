@@ -126,41 +126,21 @@ var chess = function () {
         if(legalMove.castle) {
             var dir = legalMove.from - legalMove.to > 0 ? 1 : -1;
             var rook = dir === 1 ? legalMove.from - 4 : legalMove.from + 3;
-            // if(board === currBoard)
-            //     updateCastle(rook, legalMove.to + dir);
             swap({from: rook, to: legalMove.to + dir, castle:false, enpassant:false}, currBoard);
             clearSquare(currBoard, rook);
         }
 
         if(legalMove.enpassant) {
             clearSquare(currBoard, legalMove.enpassant);
-            if(board === currBoard)
-                updatePassant(legalMove.enpassant);
         }
 
         if (legalMove.promotion !== '') {
-            if (currBoard === board) {
-              const promotionPiece = await handlePromotion(legalMove.to, currBoard[legalMove.from].color);
-              updatePromotion(legalMove.from, legalMove.to, currBoard[legalMove.from].color, promotionPiece);
-              currBoard[legalMove.from].type = promotionPiece;
-            } else {
-              currBoard[legalMove.from].type = legalMove.promotion;
-            }
+            currBoard[legalMove.from].type = legalMove.promotion;
         }
         swap(legalMove, currBoard);
         clearSquare(currBoard, legalMove.from);
         updateFlags(currBoard, legalMove);
       }
-    
-    async function move(from, to) {
-        const legalMove = isLegal(board[from], board[to], board, false);
-        if(legalMove) {
-            await applyMove(legalMove, board);
-            realTurn = (realTurn === WHITE) ? BLACK : WHITE;
-            return legalMove;
-        }
-        return undefined;
-    }
 
     function clearEnpassant(currBoard) {
         currBoard.forEach(square => {
@@ -443,7 +423,6 @@ var chess = function () {
         square: square,
         pieces: pieces,
         print: boardToAscii,
-        move: move,
         list: getLegalMoves,
         setBoard: setUpBoard,
         isLegal: isLegal,
@@ -459,69 +438,4 @@ function translateIndex(id, toIndex) {
     return [column, row];
 }
 
-function updateCastle(from, to) {
-    const fromDiv = document.getElementById(from);
-    const toDiv = document.getElementById(to);
-    toDiv.appendChild(fromDiv.getElementsByTagName('img')[0])
-    fromDiv.innerHTML = '';
-}
-
-function updatePassant(id) {
-    document.getElementById(id).innerHTML = '';
-}
-
-async function handlePromotion(to, color) {
-    try {
-        const chosenPiece = await getPromotion(to, color);
-        return chosenPiece;
-    } catch (error) {
-        console.error('Error during promotion:', error);
-    }
-}
-
-function getPromotion(to, color) {
-    return new Promise((resolve, reject) => {
-        const pieces = color === 0 ? ['Q', 'R', 'B', 'N'] : ['q', 'r', 'b', 'n'];
-        const menu = document.getElementById('promotion-menu');
-        const squareTo = document.getElementById(to);
-        menu.innerHTML = '';
-        const computedStyles = window.getComputedStyle(document.getElementsByClassName('square')[0]);
-        const h = parseFloat(computedStyles.getPropertyValue('height')); // Parse float value
-        const w = parseFloat(computedStyles.getPropertyValue('width')); // Parse float value
-        menu.style.height = `${h * 4}px`; // Set height with correct unit
-        pieces.forEach(piece => {
-            const div = document.createElement('div');
-            div.classList.add('promotion-option');
-            div.style.height = `${h}px`; // Set height with correct unit
-            div.style.width = `${w}px`; // Set width with correct unit
-            div.setAttribute('data-piece', piece.toLowerCase()); // Fixed syntax for toLowerCase()
-            const img = document.createElement('img');
-            img.src = getPieceHTML(piece);
-            div.appendChild(img);
-            menu.appendChild(div);
-        });
-        menu.style.display = 'grid';
-        // Position menu
-
-        const squareRect = squareTo.getBoundingClientRect();
-        const menuRect = menu.getBoundingClientRect();
-        const top = color === 0 ? squareRect.top : squareRect.top - (h + 3.2) * 3;
-        menu.style.top = `${top}px`;
-        menu.style.left = `${squareRect.left}px`;
-
-        // Click listener
-        menu.addEventListener('click', event => {
-                menu.style.display = 'none'; // Fixed syntax for display property
-                resolve(event.target.closest('.promotion-option').getAttribute('data-piece'));
-        }, { once: true });
-    });
-}
-
-function updatePromotion(from, to, color, piece) {
-    const toDiv = document.getElementById(to);
-    document.getElementById(from).innerHTML = '';
-    if(color === 0)
-        piece = piece.toUpperCase();
-    toDiv.getElementsByTagName('img')[0].src = getPieceHTML(piece);
- }
 export {chess};
