@@ -1,7 +1,7 @@
 import getPieceHTML from './script.js'
 
 var chess = function () {
-    const board = new Array(64);
+    var board = new Array(64);
 
     var flag = {
         moved: false,
@@ -34,7 +34,7 @@ var chess = function () {
         ' ',' ',' ',' ',' ',' ',' ',' ',// 24 25 26 27 28 29 30 31
         ' ',' ','p',' ','p',' ',' ',' ',// 32 33 34 35 36 37 38 39
         ' ',' ',' ',' ',' ',' ',' ',' ',// 40 41 42 43 44 45 46 47
-        'P','P','P','P','P','P','p','P',// 48 49 50 51 52 53 54 55
+        'P','P','P','P','P','p','p','P',// 48 49 50 51 52 53 54 55
         'R',' ',' ',' ','K',' ',' ','R',// 56 57 58 59 60 61 62 63
     ];
 
@@ -42,6 +42,7 @@ var chess = function () {
     var realTurn = WHITE;
 
     function setUpBoard() {
+        const newBoard = [];
         for(let i = 0; i < 64; i++) {
             var tempsquare = structuredClone(square);
             tempsquare.id = i;
@@ -49,8 +50,9 @@ var chess = function () {
                 tempsquare.color = defaultPos[i] === defaultPos[i].toLowerCase() ? BLACK : WHITE;
                 tempsquare.type = defaultPos[i].toLowerCase();
             }
-            board[i] = tempsquare;
+            newBoard[i] = tempsquare;
         }
+        return newBoard;
     }
     function boardToAscii () {
         var string = '';
@@ -61,15 +63,15 @@ var chess = function () {
         });
     }
 
-    function getLegalMoves(board, color) {
+    function getLegalMoves(currboard, color) {
         const moveList = [];
-        for(const square of board) {
+        for(const square of currboard) {
             if(square.color === color) {
-                const temp = isLegal(square, {color:!color}, board, false, true, color);
+                const temp = isLegal(square, {color:!color}, currboard, false, true, color);
                 if(!temp)
                     continue ;
                 for(const move of temp) {
-                    if(!checked(move, false))
+                    if(!checked(move, false, currboard))
                         moveList.push(move);
             }
         }
@@ -90,7 +92,7 @@ var chess = function () {
         });
     }
 
-    function isLegal(from, to, currboard, fictionnal, generate=false, color=-1) {
+    function isLegal(from, to, currBoard, fictionnal, generate=false, color=-1) {
         var legalpiece = {
             'p': pawn,
             'n': knight,
@@ -105,11 +107,11 @@ var chess = function () {
         if((!fictionnal && from.color !== turn) || from.color === to.color) {
             return false;
         }
-        const legalMoves = legalpiece[from.type](from, currboard);
+        const legalMoves = legalpiece[from.type](from, currBoard);
         if(generate)
             return legalMoves;
         const legalMove = getMoveByToId(legalMoves, to.id);
-        if(!legalMove|| (!fictionnal && checked(legalMove, false)))
+        if(!legalMove|| (!fictionnal && checked(legalMove, false, currBoard)))
             return false;
         return legalMove;
     }
@@ -124,10 +126,10 @@ var chess = function () {
         if(legalMove.castle) {
             var dir = legalMove.from - legalMove.to > 0 ? 1 : -1;
             var rook = dir === 1 ? legalMove.from - 4 : legalMove.from + 3;
+            // if(board === currBoard)
+            //     updateCastle(rook, legalMove.to + dir);
             swap({from: rook, to: legalMove.to + dir, castle:false, enpassant:false}, currBoard);
             clearSquare(currBoard, rook);
-            if(board === currBoard)
-                updateCastle(rook, legalMove.to + dir);
         }
 
         if(legalMove.enpassant) {
@@ -183,8 +185,9 @@ var chess = function () {
         }
     }
 
-    function checked(legalMove, current) {
-        var tempBoard = structuredClone(board);
+    function checked(legalMove, current, currBoard) {
+        var tempBoard = structuredClone(currBoard);
+        // debugger;
         if(!current) {
             applyMove(legalMove, tempBoard);
         }
@@ -377,13 +380,13 @@ var chess = function () {
     }
 
     function castle(from, currBoard, c, r, listLegalMoves) {
-        if(from.flags.moved === false && !checked(setupMoves(from.id, from.id), true)) {
+        if(from.flags.moved === false && !checked(setupMoves(from.id, from.id), true, currBoard)) {
             let x = c;
             let id = translateIndex([++x, r], true);
             
             while((x >= 0 && x < 8) && currBoard[id].type === '') {
-                if(checked(setupMoves(from.id, id), false))
-                    break ;
+                if(checked(setupMoves(from.id, id), false, currBoard))
+                    break;
 
                 id = translateIndex([++x, r], true);
             }
@@ -392,7 +395,7 @@ var chess = function () {
             x = c;
             id = translateIndex([--x, r], true);
             while((x >= 0 && x < 8) && currBoard[id].type === '') {
-                if(checked(setupMoves(from.id, id), false))
+                if(checked(setupMoves(from.id, id), false, currBoard))
                     break ;
                 id = translateIndex([--x, r], true);
             }
@@ -434,8 +437,7 @@ var chess = function () {
         return listLegalMoves;
     }
 
-    setUpBoard();
-    getLegalMoves(structuredClone(board), 0);
+    board = setUpBoard();
     return {
         board: defaultPos,
         square: square,
@@ -443,6 +445,8 @@ var chess = function () {
         print: boardToAscii,
         move: move,
         list: getLegalMoves,
+        setBoard: setUpBoard,
+        isLegal: isLegal,
     };
 }
 
@@ -519,5 +523,5 @@ function updatePromotion(from, to, color, piece) {
     if(color === 0)
         piece = piece.toUpperCase();
     toDiv.getElementsByTagName('img')[0].src = getPieceHTML(piece);
-}
+ }
 export {chess};
