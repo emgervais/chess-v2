@@ -5,6 +5,7 @@ var board;
 var realTurn = 0;
 const WHITE = 0;
 const BLACK = 1;
+var multi = false;
 
 function initializeBoard() {
     const cb = document.getElementById('chessboard');
@@ -14,6 +15,22 @@ function initializeBoard() {
     addPieces(cb);
     clickHandler(cb);
     dragHandler(cb);
+    gameSelect();
+}
+
+function gameSelect() {
+    const overlay = document.getElementById('overlay');
+    const solo = document.getElementById('solo');
+    const duo = document.getElementById('duo');
+
+    solo.addEventListener('click', function () {
+        overlay.style.display = 'none';
+    });
+
+    duo.addEventListener('click', function () {
+        multi = true;
+        overlay.style.display = 'none';
+    });
 }
 
 function clickHandler(cb) {
@@ -49,11 +66,6 @@ function dragHandler(cb) {
 }
 
 function dragStart(event) {
-    // event.preventDefault();
-    // const emptyImg = new Image();
-    // emptyImg.src = event.target.src;
-    // event.dataTransfer.setDragImage(emptyImg, 0, 0);
-    // console.log(event);
     event.dataTransfer.setData('text/plain', event.target.closest('.square').id)
 }
 async function move(from, to) {
@@ -63,11 +75,26 @@ async function move(from, to) {
     if(move !== undefined && move.promotion === '') {
         square.innerHTML = '';
         square.appendChild(from);
-        from.classList.remove('selected'); 
+        from.classList.remove('selected');
+        await Promise.resolve(algo());
     }
+
     wait = false;
 }
 
+function algo() {
+        if(multi === false) {
+            const listValidMove = chessBoard.list(board, realTurn);
+            const botMove = findMove(listValidMove);
+            console.log(botMove);
+            applyMove(botMove, board, false);
+            const from = document.getElementById(botMove.from).getElementsByTagName('img')[0];
+            const to = document.getElementById(botMove.to);
+            to.innerHTML = '';
+            to.appendChild(from);
+            realTurn = realTurn === 1 ? 0 : 1;
+        }
+}
 function setBoard(cb) {
     const color = ['light', 'dark'];
     var c = false;
@@ -145,7 +172,7 @@ async function makeMove(from, to) {
     return undefined;
 }
 
-async function applyMove(legalMove, board) {
+async function applyMove(legalMove, board, player=true) {
     if(legalMove.castle) {
         var dir = legalMove.from - legalMove.to > 0 ? 1 : -1;
         var rook = dir === 1 ? legalMove.from - 4 : legalMove.from + 3;
@@ -160,9 +187,11 @@ async function applyMove(legalMove, board) {
     }
 
     if (legalMove.promotion !== '') {
-          const promotionPiece = await handlePromotion(legalMove.to, board[legalMove.from].color);
-          updatePromotion(legalMove.from, legalMove.to, board[legalMove.from].color, promotionPiece);
-          board[legalMove.from].type = promotionPiece;
+        if(player) {
+            legalMove.promotion = await handlePromotion(legalMove.to, board[legalMove.from].color);
+        }
+        updatePromotion(legalMove.from, legalMove.to, board[legalMove.from].color, legalMove.promotion);
+        board[legalMove.from].type = legalMove.promotion;
     }
     swap(legalMove, board);
     clearSquare(board, legalMove.from);
@@ -271,3 +300,21 @@ document.addEventListener('DOMContentLoaded', function () {
     // chessBoard.move(0, 1);
     // chessBoard.print();
 });
+
+//-----------------------algo----------
+
+function getRandomNumber(min, max) {
+    // Generate a random floating-point number between 0 and 1
+    const randomFraction = Math.random();
+  
+    // Scale the random number to fit within the specified range
+    const randomNumber = min + randomFraction * (max - min);
+  
+    // Return the random number
+    return randomNumber;
+  }
+
+function findMove(legalsMoves) {
+    const num = Math.floor(getRandomNumber(0, legalsMoves.length));
+    return legalsMoves[num];
+}
