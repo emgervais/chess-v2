@@ -6,6 +6,7 @@ var realTurn = 0;
 const WHITE = 0;
 const BLACK = 1;
 var multi = false;
+var chessBoard;
 
 function initializeBoard() {
     const cb = document.getElementById('chessboard');
@@ -71,29 +72,27 @@ function dragStart(event) {
 async function move(from, to) {
     const square = to.closest('.square');
     wait = true;
-    const move = await makeMove(from.closest('.square').id, square.id)
+    const move = await makeMove(from.closest('.square').id, square.id);
     if(move !== undefined && move.promotion === '') {
         square.innerHTML = '';
         square.appendChild(from);
         from.classList.remove('selected');
+    }
+    if(move !== undefined && multi === false) {
         await Promise.resolve(algo());
     }
-
     wait = false;
 }
 
 function algo() {
-        if(multi === false) {
-            const listValidMove = chessBoard.list(board, realTurn);
-            const botMove = findMove(listValidMove);
+            const botMove = findMove(realTurn, board);
             console.log(botMove);
             applyMove(botMove, board, false);
             const from = document.getElementById(botMove.from).getElementsByTagName('img')[0];
             const to = document.getElementById(botMove.to);
             to.innerHTML = '';
             to.appendChild(from);
-            realTurn = realTurn === 1 ? 0 : 1;
-        }
+            realTurn = changeTurn(realTurn);
 }
 function setBoard(cb) {
     const color = ['light', 'dark'];
@@ -166,7 +165,7 @@ async function makeMove(from, to) {
     const legalMove = chessBoard.isLegal(board[from], board[to], board, false, false, realTurn);
     if(legalMove) {
         await applyMove(legalMove, board);
-        realTurn = (realTurn === WHITE) ? BLACK : WHITE;
+        realTurn = changeTurn(realTurn);
         return legalMove;
     }
     return undefined;
@@ -293,28 +292,51 @@ function clearEnpassant(currBoard) {
     });
 }
 
-var chessBoard;
+function changeTurn(turn) {
+    return turn === 1 ? 0 : 1;
+}
+
 document.addEventListener('DOMContentLoaded', function () {
     chessBoard = chess();
     initializeBoard();
-    // chessBoard.move(0, 1);
-    // chessBoard.print();
 });
 
 //-----------------------algo----------
 
-function getRandomNumber(min, max) {
-    // Generate a random floating-point number between 0 and 1
-    const randomFraction = Math.random();
-  
-    // Scale the random number to fit within the specified range
-    const randomNumber = min + randomFraction * (max - min);
-  
-    // Return the random number
-    return randomNumber;
-  }
+const pieceValue = {
+    'p': 10,
+    'b': 30,
+    'n': 30,
+    'r': 50,
+    'q': 90,
+    'k': 900
+};
 
-function findMove(legalsMoves) {
-    const num = Math.floor(getRandomNumber(0, legalsMoves.length));
-    return legalsMoves[num];
+function calculatePoints(fboard) {
+    var value = 0;
+    for(const square of fboard) {
+        if(square.type !== '') {
+            value += square.color === WHITE ? pieceValue[square.type] : -pieceValue[square.type];
+        }
+    }
+    return value;
+}
+function findMove(turn, board, depth=2, moveList=[], nodes=[]) {
+    const listValidMove = chessBoard.list(board, turn);
+    for(const move of listValidMove) {
+        if(depth === 0)
+            return console.log(nodes);
+        const fBoard = structuredClone(board);
+        applyMove(move, fBoard, false);
+        const value = calculatePoints(fBoard);
+        nodes.push({move:moveList.push(move), board:fBoard, value:value});
+        findMove(changeTurn(turn), fBoard, depth - 1, moveList, nodes);
+    }
+
+    // if(turn === WHITE) {
+    //     return boards.reduce((prev, current) => (prev.value > current.value) ? prev : current).move;
+    // }
+    // else {
+    //     return boards.reduce((prev, current) => (prev.value < current.value) ? prev : current).move;
+    // }
 }
