@@ -324,12 +324,15 @@ function calculatePoints(fboard) {
 function findMove(turn, board, depth=2, moveList=[], nodes=[]) {
     const listValidMove = chessBoard.list(board, turn);
     for(const move of listValidMove) {
-        if(depth === 0)
+        if(depth === 0) {
+            nodes.push({move:moveList, value:calculatePoints(board)});
             return console.log(nodes);
+        }
+
         const fBoard = structuredClone(board);
         applyMove(move, fBoard, false);
         const value = calculatePoints(fBoard);
-        nodes.push({move:moveList.push(move), board:fBoard, value:value});
+        moveList.push(move);
         findMove(changeTurn(turn), fBoard, depth - 1, moveList, nodes);
     }
 
