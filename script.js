@@ -85,15 +85,16 @@ async function move(from, to) {
 }
 
 function algo() {
-            const botMove = findMove(realTurn, board);
+            const botMove = findMove(realTurn, board, 2, true);
             console.log(botMove);
-            applyMove(botMove, board, false);
+            applyMove(botMove, board, true, false);
             const from = document.getElementById(botMove.from).getElementsByTagName('img')[0];
             const to = document.getElementById(botMove.to);
             to.innerHTML = '';
             to.appendChild(from);
             realTurn = changeTurn(realTurn);
 }
+
 function setBoard(cb) {
     const color = ['light', 'dark'];
     var c = false;
@@ -164,32 +165,35 @@ function swap(legalMove, board) {
 async function makeMove(from, to) {
     const legalMove = chessBoard.isLegal(board[from], board[to], board, false, false, realTurn);
     if(legalMove) {
-        await applyMove(legalMove, board);
+        await applyMove(legalMove, board, true);
         realTurn = changeTurn(realTurn);
         return legalMove;
     }
     return undefined;
 }
 
-async function applyMove(legalMove, board, player=true) {
+async function applyMove(legalMove, board, isReal, player=true) {
     if(legalMove.castle) {
         var dir = legalMove.from - legalMove.to > 0 ? 1 : -1;
         var rook = dir === 1 ? legalMove.from - 4 : legalMove.from + 3;
-        updateCastle(rook, legalMove.to + dir);
         swap({from: rook, to: legalMove.to + dir, castle:false, enpassant:false}, board);
         clearSquare(board, rook);
+        if(isReal)
+            updateCastle(rook, legalMove.to + dir);
     }
 
     if(legalMove.enpassant) {
         clearSquare(board, legalMove.enpassant);
-        updatePassant(legalMove.enpassant);
+        if(isReal)
+            updatePassant(legalMove.enpassant);
     }
 
     if (legalMove.promotion !== '') {
         if(player) {
             legalMove.promotion = await handlePromotion(legalMove.to, board[legalMove.from].color);
         }
-        updatePromotion(legalMove.from, legalMove.to, board[legalMove.from].color, legalMove.promotion);
+        if(isReal)
+            updatePromotion(legalMove.from, legalMove.to, board[legalMove.from].color, legalMove.promotion);
         board[legalMove.from].type = legalMove.promotion;
     }
     swap(legalMove, board);
@@ -312,34 +316,157 @@ const pieceValue = {
     'k': 900
 };
 
+
+const reverseArray = function(array) {
+    return array.slice().reverse();
+};
+const pawnEvalWhite =
+[
+    0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,
+    5.0,  5.0,  5.0,  5.0,  5.0,  5.0,  5.0,  5.0,
+    1.0,  1.0,  2.0,  3.0,  3.0,  2.0,  1.0,  1.0,
+    0.5,  0.5,  1.0,  2.5,  2.5,  1.0,  0.5,  0.5,
+    0.0,  0.0,  0.0,  2.0,  2.0,  0.0,  0.0,  0.0,
+    0.5, -0.5, -1.0,  0.0,  0.0, -1.0, -0.5,  0.5,
+    0.5,  1.0, 1.0,  -2.0, -2.0,  1.0,  1.0,  0.5,
+    0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0
+];
+
+const pawnEvalBlack = reverseArray(pawnEvalWhite);
+
+const knightEval =
+[
+    -5.0, -4.0, -3.0, -3.0, -3.0, -3.0, -4.0, -5.0,
+    -4.0, -2.0,  0.0,  0.0,  0.0,  0.0, -2.0, -4.0,
+    -3.0,  0.0,  1.0,  1.5,  1.5,  1.0,  0.0, -3.0,
+    -3.0,  0.5,  1.5,  2.0,  2.0,  1.5,  0.5, -3.0,
+    -3.0,  0.0,  1.5,  2.0,  2.0,  1.5,  0.0, -3.0,
+    -3.0,  0.5,  1.0,  1.5,  1.5,  1.0,  0.5, -3.0,
+    -4.0, -2.0,  0.0,  0.5,  0.5,  0.0, -2.0, -4.0,
+    -5.0, -4.0, -3.0, -3.0, -3.0, -3.0, -4.0, -5.0
+];
+
+const bishopEvalWhite = [
+    -2.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -2.0,
+    -1.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0, -1.0,
+    -1.0,  0.0,  0.5,  1.0,  1.0,  0.5,  0.0, -1.0,
+    -1.0,  0.5,  0.5,  1.0,  1.0,  0.5,  0.5, -1.0,
+    -1.0,  0.0,  1.0,  1.0,  1.0,  1.0,  0.0, -1.0,
+    -1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0, -1.0,
+    -1.0,  0.5,  0.0,  0.0,  0.0,  0.0,  0.5, -1.0,
+    -2.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -2.0
+];
+
+const bishopEvalBlack = reverseArray(bishopEvalWhite);
+
+const rookEvalWhite = [
+    0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,
+    0.5,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  0.5,
+    -0.5,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0, -0.5,
+    -0.5,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0, -0.5,
+    -0.5,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0, -0.5,
+    -0.5,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0, -0.5,
+    -0.5,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0, -0.5,
+    0.0,   0.0, 0.0,  0.5,  0.5,  0.0,  0.0,  0.0
+];
+
+const rookEvalBlack = reverseArray(rookEvalWhite);
+
+const evalQueen = [
+    -2.0, -1.0, -1.0, -0.5, -0.5, -1.0, -1.0, -2.0,
+    -1.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0, -1.0,
+    -1.0,  0.0,  0.5,  0.5,  0.5,  0.5,  0.0, -1.0,
+    -0.5,  0.0,  0.5,  0.5,  0.5,  0.5,  0.0, -0.5,
+    0.0,  0.0,  0.5,  0.5,  0.5,  0.5,  0.0, -0.5,
+    -1.0,  0.5,  0.5,  0.5,  0.5,  0.5,  0.0, -1.0,
+    -1.0,  0.0,  0.5,  0.0,  0.0,  0.0,  0.0, -1.0,
+    -2.0, -1.0, -1.0, -0.5, -0.5, -1.0, -1.0, -2.0
+];
+
+const kingEvalWhite = [
+    -3.0, -4.0, -4.0, -5.0, -5.0, -4.0, -4.0, -3.0,
+    -3.0, -4.0, -4.0, -5.0, -5.0, -4.0, -4.0, -3.0,
+    -3.0, -4.0, -4.0, -5.0, -5.0, -4.0, -4.0, -3.0,
+    -3.0, -4.0, -4.0, -5.0, -5.0, -4.0, -4.0, -3.0,
+    -2.0, -3.0, -3.0, -4.0, -4.0, -3.0, -3.0, -2.0,
+    -1.0, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -1.0,
+    2.0,  2.0,  0.0,  0.0,  0.0,  0.0,  2.0,  2.0,
+    2.0,  3.0,  1.0,  0.0,  0.0,  1.0,  3.0,  2.0
+];
+
+const kingEvalBlack = reverseArray(kingEvalWhite);
+
+const pieceAdjust = {
+    'wp': pawnEvalWhite,
+    'wb': bishopEvalWhite,
+    'wn': knightEval,
+    'wr': rookEvalWhite,
+    'wq': evalQueen,
+    'wk': kingEvalWhite,
+    'bp': pawnEvalBlack,
+    'bb': bishopEvalBlack,
+    'bn': knightEval,
+    'br': rookEvalBlack,
+    'bq': evalQueen,
+    'bk': kingEvalBlack
+}
+
 function calculatePoints(fboard) {
     var value = 0;
     for(const square of fboard) {
         if(square.type !== '') {
-            value += square.color === WHITE ? pieceValue[square.type] : -pieceValue[square.type];
+            // const colorPiece = square.color === WHITE ? 'w' + square.type : 'b' + square.type;
+            value += square.color === WHITE ? pieceValue[square.type] + pieceAdjust['w' + square.type][square.id] : -(pieceValue[square.type] + pieceAdjust['b' + square.type][square.id]);
         }
     }
     return value;
 }
-function findMove(turn, board, depth=2, moveList=[], nodes=[]) {
+function findMove(turn, board, depth, isMaxPlayer) {
     const listValidMove = chessBoard.list(board, turn);
+    var bestMove = 9999;
+    var bestMoveFound;
     for(const move of listValidMove) {
-        if(depth === 0) {
-            nodes.push({move:moveList, value:calculatePoints(board)});
-            return console.log(nodes);
+        var fBoard = structuredClone(board);
+        applyMove(move, fBoard, false, false);
+        var value = minimax(depth - 1, fBoard, -10000, 10000, !isMaxPlayer, changeTurn(turn))
+        if(value <= bestMove) {
+            bestMove = value;
+            bestMoveFound = move;
         }
-
-        const fBoard = structuredClone(board);
-        applyMove(move, fBoard, false);
-        const value = calculatePoints(fBoard);
-        moveList.push(move);
-        findMove(changeTurn(turn), fBoard, depth - 1, moveList, nodes);
     }
-
-    // if(turn === WHITE) {
-    //     return boards.reduce((prev, current) => (prev.value > current.value) ? prev : current).move;
-    // }
-    // else {
-    //     return boards.reduce((prev, current) => (prev.value < current.value) ? prev : current).move;
-    // }
+    return bestMoveFound;
 }
+
+function minimax(depth, fBoard, alpha, beta, isMaxPlayer, turn) {
+    if (depth === 0) {
+        console.log(calculatePoints(fBoard));
+        return calculatePoints(fBoard);
+    }
+    var listValidMove = chessBoard.list(fBoard, turn);
+    var vBoard;
+    if (isMaxPlayer) {
+        var bestMove = -9999;
+        for(const move of listValidMove) {
+            vBoard = structuredClone(fBoard);
+            applyMove(move, vBoard, false, false);
+            bestMove = Math.max(bestMove, minimax(depth - 1, vBoard, alpha, beta, !isMaxPlayer, changeTurn(turn)));
+            alpha = Math.max(alpha, bestMove);
+            if (beta <= alpha) {
+                return bestMove;
+            }
+        }
+        return bestMove;
+    } else {
+        var bestMove = 9999;
+        for (const move of listValidMove) {
+            vBoard = structuredClone(fBoard);
+            applyMove(move, vBoard, false, false);
+            bestMove = Math.max(bestMove, minimax(depth - 1, vBoard, alpha, beta, !isMaxPlayer, changeTurn(turn)));
+            beta = Math.min(beta, bestMove);
+            if (beta <= alpha) {
+                return bestMove;
+            }
+        }
+        return bestMove;
+    }
+};
