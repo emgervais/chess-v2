@@ -7,6 +7,7 @@ const WHITE = 0;
 const BLACK = 1;
 var multi = false;
 var chessBoard;
+var position = 0;
 
 function initializeBoard() {
     const cb = document.getElementById('chessboard');
@@ -85,8 +86,7 @@ async function move(from, to) {
 }
 
 function algo() {
-            const botMove = findMove(realTurn, board, 2, true);
-            console.log(botMove);
+            const botMove = findMove(realTurn, board, 4, true);
             applyMove(botMove, board, true, false);
             const from = document.getElementById(botMove.from).getElementsByTagName('img')[0];
             const to = document.getElementById(botMove.to);
@@ -415,7 +415,7 @@ function calculatePoints(fboard) {
     var value = 0;
     for(const square of fboard) {
         if(square.type !== '') {
-            // const colorPiece = square.color === WHITE ? 'w' + square.type : 'b' + square.type;
+            //value += square.color === WHITE ? pieceValue[square.type] : -pieceValue[square.type];
             value += square.color === WHITE ? pieceValue[square.type] + pieceAdjust['w' + square.type][square.id] : -(pieceValue[square.type] + pieceAdjust['b' + square.type][square.id]);
         }
     }
@@ -423,24 +423,29 @@ function calculatePoints(fboard) {
 }
 function findMove(turn, board, depth, isMaxPlayer) {
     const listValidMove = chessBoard.list(board, turn);
-    var bestMove = 9999;
+    var bestMove = -9999;
     var bestMoveFound;
+    position = 0;
     for(const move of listValidMove) {
         var fBoard = structuredClone(board);
         applyMove(move, fBoard, false, false);
-        var value = minimax(depth - 1, fBoard, -10000, 10000, !isMaxPlayer, changeTurn(turn))
-        if(value <= bestMove) {
+        // var value = calculatePoints(fBoard);
+        var value = minimax(depth - 1, fBoard, -10000, 10000, !isMaxPlayer, changeTurn(turn));
+        //console.log(value, bestMove);
+        if(value >= bestMove) {
             bestMove = value;
             bestMoveFound = move;
         }
     }
+    alert('number of position analysed: ' + position);
     return bestMoveFound;
 }
 
 function minimax(depth, fBoard, alpha, beta, isMaxPlayer, turn) {
+    position++;
     if (depth === 0) {
-        console.log(calculatePoints(fBoard));
-        return calculatePoints(fBoard);
+        //console.log(chessBoard.print(fBoard), -calculatePoints(fBoard));
+        return -calculatePoints(fBoard);
     }
     var listValidMove = chessBoard.list(fBoard, turn);
     var vBoard;
@@ -451,6 +456,7 @@ function minimax(depth, fBoard, alpha, beta, isMaxPlayer, turn) {
             applyMove(move, vBoard, false, false);
             bestMove = Math.max(bestMove, minimax(depth - 1, vBoard, alpha, beta, !isMaxPlayer, changeTurn(turn)));
             alpha = Math.max(alpha, bestMove);
+            // console.log(bestMove, alpha);
             if (beta <= alpha) {
                 return bestMove;
             }
@@ -461,7 +467,7 @@ function minimax(depth, fBoard, alpha, beta, isMaxPlayer, turn) {
         for (const move of listValidMove) {
             vBoard = structuredClone(fBoard);
             applyMove(move, vBoard, false, false);
-            bestMove = Math.max(bestMove, minimax(depth - 1, vBoard, alpha, beta, !isMaxPlayer, changeTurn(turn)));
+            bestMove = Math.min(bestMove, minimax(depth - 1, vBoard, alpha, beta, !isMaxPlayer, changeTurn(turn)));
             beta = Math.min(beta, bestMove);
             if (beta <= alpha) {
                 return bestMove;

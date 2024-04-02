@@ -54,13 +54,14 @@ var chess = function () {
         }
         return newBoard;
     }
-    function boardToAscii () {
+    function boardToAscii (fBoard) {
         var string = '';
-        board.forEach(element => {
+        fBoard.forEach(element => {
             if(element.id % 8 == 0)
-            string += '\n';
-        string += element.type + ' ';
+                string += '\n';
+        string += element.type + (element.type === '' ? '  ' : ' ');
         });
+        return string;
     }
 
     function getLegalMoves(currboard, color) {
