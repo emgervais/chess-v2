@@ -8,6 +8,7 @@ const BLACK = 1;
 var multi = false;
 var chessBoard;
 var position = 0;
+var done = false;
 
 function initializeBoard() {
     const cb = document.getElementById('chessboard');
@@ -40,7 +41,7 @@ function clickHandler(cb) {
         const element = event.target;
         if(element.classList.contains('piece')) {
             var selected = document.querySelector('.selected');
-            if(selected && selected != element) {
+            if(selected && selected != element && !wait && !done) {
                 move(selected, element);
             }
             else
@@ -48,7 +49,7 @@ function clickHandler(cb) {
         }
         if(element.classList.contains('square')) {
             var selected = document.querySelector('.selected');
-            if(selected)
+            if(selected && !wait && !done)
                 move(selected, element);
         }
     });
@@ -62,7 +63,7 @@ function dragHandler(cb) {
     cb.addEventListener('drop', event => {
         const pieceId = event.dataTransfer.getData('text/plain');
         const piece = document.getElementById(pieceId);
-        if(!wait)
+        if(!wait && !done)
             move(piece.getElementsByTagName('img')[0], event.target);
     });
 }
@@ -88,11 +89,15 @@ async function move(from, to) {
 function algo() {
             const botMove = findMove(realTurn, board, 4, true);
             applyMove(botMove, board, true, false);
+            realTurn = changeTurn(realTurn);
             const from = document.getElementById(botMove.from).getElementsByTagName('img')[0];
             const to = document.getElementById(botMove.to);
             to.innerHTML = '';
             to.appendChild(from);
-            realTurn = changeTurn(realTurn);
+            if(chessBoard.list(board, realTurn).length === 0) {
+                done = true;
+                alert('checkmate');
+            }
 }
 
 function setBoard(cb) {
@@ -167,6 +172,10 @@ async function makeMove(from, to) {
     if(legalMove) {
         await applyMove(legalMove, board, true);
         realTurn = changeTurn(realTurn);
+        if(chessBoard.list(board, realTurn).length === 0) {
+            done = true;
+            alert('checkmate');
+        }
         return legalMove;
     }
     return undefined;
