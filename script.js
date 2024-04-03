@@ -74,7 +74,14 @@ async function move(from, to) {
     wait = false;
 }
 
+function fetchSelection() {
+    // Get the selected value and depth from the dropdown
+    const dropdown = document.getElementById('myDropdown');
+    depth = dropdown.value;
+}
+
 export function algo() {
+    fetchSelection();
     const botMove = findMove(realTurn, board, depth, true);
     applyMove(botMove, board, true, false);
     realTurn = changeTurn(realTurn);
