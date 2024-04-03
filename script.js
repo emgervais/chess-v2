@@ -17,7 +17,6 @@ function initializeBoard() {
     board = chessBoard.setBoard();
     setBoard(cb);
     addPieces(cb);
-    clickHandler(cb);
     dragHandler(cb);
     gameSelect();
 }
@@ -34,25 +33,6 @@ function gameSelect() {
     duo.addEventListener('click', function () {
         multi = true;
         overlay.style.display = 'none';
-    });
-}
-
-function clickHandler(cb) {
-    cb.addEventListener('click', event => {
-        const element = event.target;
-        if(element.classList.contains('piece')) {
-            var selected = document.querySelector('.selected');
-            if(selected && selected != element && !wait && !done) {
-                move(selected, element);
-            }
-            else
-                element.classList.add('selected');
-        }
-        if(element.classList.contains('square')) {
-            var selected = document.querySelector('.selected');
-            if(selected && !wait && !done)
-                move(selected, element);
-        }
     });
 }
 

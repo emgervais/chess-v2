@@ -64,6 +64,10 @@ body {
     background-color: #a37043; 
 }
 
+.grey {
+    background-color: #6b6b6b;
+}
+
 #overlay {
     position: fixed;
     display: flex;
