@@ -268,7 +268,9 @@ function updatePromotion(from, to, color, piece) {
     document.getElementById(from).innerHTML = '';
     if(color === 0)
         piece = piece.toUpperCase();
-    toDiv.getElementsByTagName('img')[0].src = getPieceHTML(piece);
+    const toImg = toDiv.getElementsByTagName('img')[0];
+    if(toImg)
+        toImg.src = getPieceHTML(piece);
 }
 
 function clearSquare(currboard, square) {
