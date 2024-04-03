@@ -9,6 +9,7 @@ var multi = false;
 var chessBoard;
 var position = 0;
 var done = false;
+var depth = 4;
 
 function initializeBoard() {
     const cb = document.getElementById('chessboard');
@@ -71,8 +72,11 @@ function dragHandler(cb) {
 function dragStart(event) {
     event.dataTransfer.setData('text/plain', event.target.closest('.square').id)
 }
+
 async function move(from, to) {
     const square = to.closest('.square');
+    const waiting = document.querySelector('.waiting-animation');
+    const num = document.getElementById('positions');
     wait = true;
     const move = await makeMove(from.closest('.square').id, square.id);
     if(move !== undefined && move.promotion === '') {
@@ -81,23 +85,27 @@ async function move(from, to) {
         from.classList.remove('selected');
     }
     if(move !== undefined && multi === false) {
+        waiting.style.display = 'flex';
+        await new Promise(resolve => setTimeout(resolve, 100));
         await Promise.resolve(algo());
+        waiting.style.display = 'none';
+        num.innerText = 'number of positions analysed: ' + position;
     }
     wait = false;
 }
 
-function algo() {
-            const botMove = findMove(realTurn, board, 4, true);
-            applyMove(botMove, board, true, false);
-            realTurn = changeTurn(realTurn);
-            const from = document.getElementById(botMove.from).getElementsByTagName('img')[0];
-            const to = document.getElementById(botMove.to);
-            to.innerHTML = '';
-            to.appendChild(from);
-            if(chessBoard.list(board, realTurn).length === 0) {
-                done = true;
-                alert('checkmate');
-            }
+export function algo() {
+    const botMove = findMove(realTurn, board, depth, true);
+    applyMove(botMove, board, true, false);
+    realTurn = changeTurn(realTurn);
+    const from = document.getElementById(botMove.from).getElementsByTagName('img')[0];
+    const to = document.getElementById(botMove.to);
+    to.innerHTML = '';
+    to.appendChild(from);
+    if(chessBoard.list(board, realTurn).length === 0) {
+        done = true;
+        alert('checkmate');
+    }
 }
 
 function setBoard(cb) {
@@ -129,7 +137,7 @@ function addPieces(cb) {
         }
 }
 
-export default function getPieceHTML(piece) {
+function getPieceHTML(piece) {
     
     switch (piece) {
         case 'r':
@@ -424,7 +432,6 @@ function calculatePoints(fboard) {
     var value = 0;
     for(const square of fboard) {
         if(square.type !== '') {
-            //value += square.color === WHITE ? pieceValue[square.type] : -pieceValue[square.type];
             value += square.color === WHITE ? pieceValue[square.type] + pieceAdjust['w' + square.type][square.id] : -(pieceValue[square.type] + pieceAdjust['b' + square.type][square.id]);
         }
     }
@@ -438,25 +445,25 @@ function findMove(turn, board, depth, isMaxPlayer) {
     for(const move of listValidMove) {
         var fBoard = structuredClone(board);
         applyMove(move, fBoard, false, false);
-        // var value = calculatePoints(fBoard);
         var value = minimax(depth - 1, fBoard, -10000, 10000, !isMaxPlayer, changeTurn(turn));
-        //console.log(value, bestMove);
         if(value >= bestMove) {
             bestMove = value;
             bestMoveFound = move;
         }
     }
-    alert('number of position analysed: ' + position);
     return bestMoveFound;
 }
 
 function minimax(depth, fBoard, alpha, beta, isMaxPlayer, turn) {
     position++;
+    // console.log(position);
     if (depth === 0) {
-        //console.log(chessBoard.print(fBoard), -calculatePoints(fBoard));
         return -calculatePoints(fBoard);
     }
     var listValidMove = chessBoard.list(fBoard, turn);
+    if(listValidMove.length === 0) {
+        return isMaxPlayer === false ? 9999 : -9999;
+    }
     var vBoard;
     if (isMaxPlayer) {
         var bestMove = -9999;
@@ -465,7 +472,6 @@ function minimax(depth, fBoard, alpha, beta, isMaxPlayer, turn) {
             applyMove(move, vBoard, false, false);
             bestMove = Math.max(bestMove, minimax(depth - 1, vBoard, alpha, beta, !isMaxPlayer, changeTurn(turn)));
             alpha = Math.max(alpha, bestMove);
-            // console.log(bestMove, alpha);
             if (beta <= alpha) {
                 return bestMove;
             }
@@ -485,3 +491,4 @@ function minimax(depth, fBoard, alpha, beta, isMaxPlayer, turn) {
         return bestMove;
     }
 };
+

@@ -4,7 +4,7 @@ body {
     align-items: center;
     height: 100vh;
     margin: 0;
-    flex-direction: column-reverse;
+    flex-direction: column;
 }
 
 #chessboard {
@@ -14,7 +14,7 @@ body {
     height: 80vmin;
     max-width: 700px;
     max-height: 700px;
-    margin: auto;
+    margin-bottom: 25px;
 }
 
 #promotion-menu {
@@ -93,3 +93,35 @@ body {
     background-color: rgb(105, 50, 50);
     cursor:pointer;
 }
+
+.waiting-animation {
+    display: none;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    height: 100vh;
+    width: 100vw;
+    font-family: Arial, sans-serif;
+    position: absolute;
+    background-color: rgba(0, 0, 0, 0.250);
+    z-index: 2;
+  }
+
+  .spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #3498db;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  .message {
+    margin-left: 10px;
+    font-size: larger;
+  }

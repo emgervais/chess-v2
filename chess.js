@@ -1,4 +1,4 @@
-import getPieceHTML from './script.js'
+
 
 var chess = function () {
     var board = new Array(64);
@@ -35,7 +35,7 @@ var chess = function () {
         ' ',' ',' ',' ',' ',' ',' ',' ',// 32 33 34 35 36 37 38 39
         ' ',' ',' ',' ',' ',' ',' ',' ',// 40 41 42 43 44 45 46 47
         'P','P','P','P','P','P','P','P',// 48 49 50 51 52 53 54 55
-        'R','N','B','Q','K','B','N','R',// 56 57 58 59 60 61 62 63
+        'R','N','B','Q','K','B','N','K',// 56 57 58 59 60 61 62 63
     ];
 
     var turn = WHITE;
@@ -194,7 +194,7 @@ var chess = function () {
     }
 
     function addPromotion(legalMoves, from, to) {
-        const pieces = ['q', 'r', 'n', 'b'];
+        const pieces = ['q', 'n'];
 
         pieces.forEach(piece => {
             legalMoves.push(setupMoves(from, to, false, false, piece));
