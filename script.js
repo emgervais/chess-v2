@@ -87,8 +87,10 @@ export function algo() {
     realTurn = changeTurn(realTurn);
     const from = document.getElementById(botMove.from).getElementsByTagName('img')[0];
     const to = document.getElementById(botMove.to);
-    to.innerHTML = '';
-    to.appendChild(from);
+    if(botMove.promotion === '') {
+        to.innerHTML = '';
+        to.appendChild(from); 
+    }
     if(chessBoard.list(board, realTurn).length === 0) {
         done = true;
         alert('checkmate');
